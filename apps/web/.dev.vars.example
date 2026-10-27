@@ -21,3 +21,7 @@
 
 # Optional. Cloudflare Web Analytics token; build-time (NEXT_PUBLIC_) so it
 # belongs in .env.local for `next build`, not here.
+
+# Optional: the chat web search through Tavily (1,000 a month free).
+# Unset, it searches Wikipedia.
+# TAVILY_API_KEY=

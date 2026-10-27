@@ -5,7 +5,12 @@
 // models — upstream's list, unchanged — are offered only when
 // AI_GATEWAY_API_KEY is set (a Worker secret), and the picker shows exactly
 // what is available (`getAvailableModels`), never a model that would fail.
-export const DEFAULT_CHAT_MODEL = "@cf/moonshotai/kimi-k2.6";
+//
+// The default is GLM 4.7 Flash, not Kimi: it is about a tenth of Kimi's
+// price per token, so a small app's chat stays inside Workers AI's free
+// 10,000 neurons a day. Kimi stays in the picker for images (vision) and the
+// harder questions.
+export const DEFAULT_CHAT_MODEL = "@cf/zai-org/glm-4.7-flash";
 
 export type ModelCapabilities = {
   tools: boolean;

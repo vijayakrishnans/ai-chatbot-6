@@ -12,6 +12,7 @@ import {
   inArray,
   lt,
   type SQL,
+  sum,
 } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
@@ -21,7 +22,10 @@ import { ChatbotError } from "../errors";
 import { generateUUID } from "../utils";
 import {
   type Chat,
+  type Comic,
+  type ComicPanel,
   chat,
+  comic,
   type DBMessage,
   document,
   message,
@@ -647,6 +651,82 @@ export async function getStreamIdsByChatId({ chatId }: { chatId: string }) {
       .execute();
 
     return streamIds.map(({ id }) => id);
+  } catch (error) {
+    throw new ChatbotError("bad_request:database", { cause: error });
+  }
+}
+
+export async function saveComic({
+  id,
+  userId,
+  title,
+  idea,
+  style,
+  panels,
+}: {
+  id: string;
+  userId: string;
+  title: string;
+  idea: string;
+  style: string;
+  panels: ComicPanel[];
+}) {
+  const db = await getDb();
+  try {
+    const [saved] = await db
+      .insert(comic)
+      .values({
+        createdAt: new Date(),
+        id,
+        idea,
+        panelCount: panels.length,
+        panels,
+        style,
+        title,
+        userId,
+      })
+      .returning();
+    return saved;
+  } catch (error) {
+    throw new ChatbotError("bad_request:database", { cause: error });
+  }
+}
+
+export async function getComicsByUserId({
+  userId,
+  limit = 20,
+}: {
+  userId: string;
+  limit?: number;
+}): Promise<Comic[]> {
+  const db = await getDb();
+  try {
+    return await db
+      .select()
+      .from(comic)
+      .where(eq(comic.userId, userId))
+      .orderBy(desc(comic.createdAt))
+      .limit(limit);
+  } catch (error) {
+    throw new ChatbotError("bad_request:database", { cause: error });
+  }
+}
+
+// Images generated since the first of this month (UTC), for the monthly
+// image allowance (lib/ai/entitlements.ts).
+export async function getImageCountThisMonth({ userId }: { userId: string }) {
+  const db = await getDb();
+  const now = new Date();
+  const monthStart = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)
+  );
+  try {
+    const [stats] = await db
+      .select({ images: sum(comic.panelCount) })
+      .from(comic)
+      .where(and(eq(comic.userId, userId), gte(comic.createdAt, monthStart)))
+      .execute();
+    return Number(stats?.images ?? 0);
   } catch (error) {
     throw new ChatbotError("bad_request:database", { cause: error });
   }

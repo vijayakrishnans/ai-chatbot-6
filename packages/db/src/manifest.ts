@@ -44,5 +44,14 @@ export const manifest: MigrationManifest = {
       description:
         "Row-level security, with no policies, on every table in public — closed to Supabase's Data API (anon, authenticated), open to the app, which owns them; refuses to run if the app's role would be locked out. lib/db/migrations/0002_row_level_security.sql is the same SQL for drizzle-kit",
     },
+    {
+      id: "040_comics",
+      context: "app",
+      path: "040_comics/up.sql",
+      checksum:
+        "cad574a8aedc9a38b0a78eb9752438339fc026c4015390e286cb2b4a3d8382f8",
+      description:
+        "The Comics tab's Comic table (title, idea, style, panels), row-level security on like every other; lib/db/migrations/0003_comics.sql is the same SQL for drizzle-kit",
+    },
   ],
 };

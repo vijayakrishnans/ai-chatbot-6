@@ -34,6 +34,11 @@ describe("the models a deployment offers (lib/ai/models.ts)", () => {
     delete process.env.AI_GATEWAY_API_KEY;
   });
 
+  it("defaults to GLM 4.7 Flash, the cheapest Workers AI model with tools", async () => {
+    const models = await import("@/lib/ai/models");
+    expect(models.DEFAULT_CHAT_MODEL).toBe("@cf/zai-org/glm-4.7-flash");
+  });
+
   it("offers only Workers AI with no gateway key, the default among them", async () => {
     const models = await import("@/lib/ai/models");
     const ids = models.getAvailableModels().map((m) => m.id);
@@ -53,7 +58,8 @@ describe("the models a deployment offers (lib/ai/models.ts)", () => {
     const fetchSpy = vi.spyOn(globalThis, "fetch");
     const models = await import("@/lib/ai/models");
     const caps = await models.getCapabilities();
-    expect(caps[models.DEFAULT_CHAT_MODEL]).toEqual({ reasoning: true, tools: true, vision: true });
+    expect(caps[models.DEFAULT_CHAT_MODEL]).toEqual({ reasoning: true, tools: true, vision: false });
+    expect(caps["@cf/moonshotai/kimi-k2.6"]).toEqual({ reasoning: true, tools: true, vision: true });
     expect(Object.keys(caps).every((id) => id.startsWith("@cf/"))).toBe(true);
     expect(fetchSpy).not.toHaveBeenCalled();
     fetchSpy.mockRestore();
