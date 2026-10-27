@@ -30,7 +30,7 @@ describe("GET /api/health", () => {
     expect(status).toBe(200);
     expect(body).toEqual({
       database: "reachable",
-      models: { default: "@cf/moonshotai/kimi-k2.6", gateway: "not connected", provider: "workers-ai" },
+      models: { default: "@cf/zai-org/glm-4.7-flash", gateway: "not connected", provider: "workers-ai" },
       ok: true,
       schema: "migrated",
     });

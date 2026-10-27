@@ -1,5 +1,6 @@
 "use client";
 
+import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   AlertDialog,
@@ -25,6 +26,16 @@ import { DataStreamHandler } from "./data-stream-handler";
 import { submitEditedMessage } from "./message-editor";
 import { Messages } from "./messages";
 import { MultimodalInput } from "./multimodal-input";
+
+// The chat fills every page under app/(chat) except the other tabs, which
+// render their own page in its place (app/(chat)/comics).
+export function ChatShellOutsideTabs() {
+  const pathname = usePathname();
+  if (pathname.startsWith("/comics")) {
+    return null;
+  }
+  return <ChatShell />;
+}
 
 export function ChatShell() {
   const {

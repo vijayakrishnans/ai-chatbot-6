@@ -14,6 +14,7 @@ const DRIZZLE_TWIN: Record<string, string> = {
   "010_initial": "0000_initial.sql",
   "020_app_secrets": "0001_app_secrets.sql",
   "030_row_level_security": "0002_row_level_security.sql",
+  "040_comics": "0003_comics.sql",
 };
 
 function statements(sql: string): string[] {

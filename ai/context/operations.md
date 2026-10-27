@@ -111,11 +111,23 @@ Caveats that matter:
 ## Models
 
 - **Workers AI is the default** for the chat, the titles and the artifact
-  tools: `@cf/moonshotai/kimi-k2.6` (tools, vision, reasoning) and
-  `@cf/zai-org/glm-4.7-flash` (fast; also the title model), in
+  tools: `@cf/zai-org/glm-4.7-flash` (the default — tools, reasoning, about a
+  tenth of Kimi's price, so a small app stays in the free daily allocation;
+  also the title model) and `@cf/moonshotai/kimi-k2.6` (tools, vision,
+  reasoning), in
   `apps/web/lib/ai/models.ts`. They run on the Cloudflare account the Worker
   deploys to, through its `AI` binding — no key, billed to that account
   (Workers AI's free daily allocation first).
+- **Web search** (`apps/web/lib/ai/tools/web-search.ts`): the chat's
+  `webSearch` tool, answered with numbered sources the model cites as [1],
+  [2]. Tavily with `TAVILY_API_KEY` set as a Worker secret (1,000 searches a
+  month free); without it, Wikipedia's search API, which needs nothing.
+- **Comics** (`/comics`, `apps/web/lib/comics`): GLM 4.7 Flash writes a 4- or
+  6-panel script, FLUX.1 [schnell] on Workers AI draws each panel into the
+  BLOB bucket, and the `Comic` table (migration `040_comics`) keeps it. Every
+  image is counted per user per month; `maxImagesPerMonth` in
+  `apps/web/lib/ai/entitlements.ts` is `null` (no limit) until a free tier
+  — 100 a month, say — is wanted.
 - **The Vercel AI Gateway is optional.** With `AI_GATEWAY_API_KEY` set as a
   Worker secret, the picker also offers upstream's gateway models (DeepSeek,
   Kimi K2.5, GPT OSS, Grok). Without it they are not offered, and a request

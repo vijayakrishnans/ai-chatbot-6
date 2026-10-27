@@ -6,4 +6,9 @@ describe("entitlementsByUserType (lib/ai/entitlements.ts)", () => {
     expect(entitlementsByUserType.guest.maxMessagesPerHour).toBe(10);
     expect(entitlementsByUserType.regular.maxMessagesPerHour).toBe(10);
   });
+
+  it("puts no monthly limit on images yet: everything is free for now", () => {
+    expect(entitlementsByUserType.guest.maxImagesPerMonth).toBeNull();
+    expect(entitlementsByUserType.regular.maxImagesPerMonth).toBeNull();
+  });
 });

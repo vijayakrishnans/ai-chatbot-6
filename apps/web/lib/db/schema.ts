@@ -2,6 +2,7 @@ import type { InferSelectModel } from "drizzle-orm";
 import {
   boolean,
   foreignKey,
+  integer,
   json,
   pgTable,
   primaryKey,
@@ -138,3 +139,29 @@ export const stream = pgTable(
 ).enableRLS();
 
 export type Stream = InferSelectModel<typeof stream>;
+
+// A comic from the Comics tab (app/(chat)/comics): the story the model wrote
+// and one generated image per panel, kept in the R2 bucket under `imageKey`.
+// `panelCount` is the images it cost, which the monthly image allowance sums
+// (lib/ai/entitlements.ts).
+export type ComicPanel = {
+  caption: string;
+  dialogue: string;
+  imageKey: string;
+  scene: string;
+};
+
+export const comic = pgTable("Comic", {
+  createdAt: timestamp("createdAt").notNull().defaultNow(),
+  id: uuid("id").primaryKey().notNull().defaultRandom(),
+  idea: text("idea").notNull(),
+  panelCount: integer("panelCount").notNull(),
+  panels: json("panels").$type<ComicPanel[]>().notNull(),
+  style: varchar("style", { length: 32 }).notNull(),
+  title: text("title").notNull(),
+  userId: uuid("userId")
+    .notNull()
+    .references(() => user.id),
+}).enableRLS();
+
+export type Comic = InferSelectModel<typeof comic>;

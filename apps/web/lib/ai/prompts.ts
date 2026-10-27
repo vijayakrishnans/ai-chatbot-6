@@ -44,6 +44,14 @@ CRITICAL RULES:
 - ONLY when the user explicitly asks for suggestions on an existing document
 `;
 
+export const webSearchPrompt = `
+**Using \`webSearch\`:**
+- For anything current (news, prices, releases, sports, weather beyond the weather tool), anything about specific people, products or places, and any fact you are not sure of: search first, then answer.
+- Answer from the results, and cite the sources you used inline as [1], [2], numbered in the order the results came back.
+- If the results do not answer the question, say so rather than guessing. Do not list the sources at the end; the chat shows them.
+- Not for small talk, writing tasks, or questions you can answer from general knowledge.
+`;
+
 export const regularPrompt = `You are a helpful assistant. Keep responses concise and direct.
 
 When asked to write, create, or build something, do it immediately. Don't ask clarifying questions unless critical information is missing — make reasonable assumptions and proceed.`;
@@ -76,7 +84,7 @@ export const systemPrompt = ({
     return `${regularPrompt}\n\n${requestPrompt}`;
   }
 
-  return `${regularPrompt}\n\n${requestPrompt}\n\n${artifactsPrompt}`;
+  return `${regularPrompt}\n\n${requestPrompt}\n\n${webSearchPrompt}\n\n${artifactsPrompt}`;
 };
 
 export const codePrompt = `

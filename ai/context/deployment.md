@@ -31,8 +31,8 @@ environment is verify-only by design — no deployed URL.
 
 | environment | default model | AI Gateway |
 |---|---|---|
-| stage | Workers AI, @cf/moonshotai/kimi-k2.6 | not connected |
-| prod | Workers AI, @cf/moonshotai/kimi-k2.6 | not connected |
+| stage | Workers AI, @cf/zai-org/glm-4.7-flash | not connected |
+| prod | Workers AI, @cf/zai-org/glm-4.7-flash | not connected |
 
 The chat runs on Workers AI through the Worker's own `AI` binding — no key.
 The AI Gateway is not a provider the platform brokers: its key is an optional

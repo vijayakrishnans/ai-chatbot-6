@@ -1,6 +1,7 @@
 "use client";
 import type { UseChatHelpers } from "@ai-sdk/react";
 import { useCallback } from "react";
+import type { WebSearchOutput } from "@/lib/ai/tools/web-search";
 import type { Vote } from "@/lib/db/schema";
 import type { ChatMessage } from "@/lib/types";
 import { cn, sanitizeText } from "@/lib/utils";
@@ -21,6 +22,7 @@ import { MessageActions } from "./message-actions";
 import { MessageReasoning } from "./message-reasoning";
 import { PreviewAttachment } from "./preview-attachment";
 import { Weather } from "./weather";
+import { WebSources } from "./web-sources";
 
 function WaitingText() {
   const { waitingStatus } = useDataStream();
@@ -185,6 +187,27 @@ const PurePreviewMessage = ({
         >
           <MessageResponse>{sanitizeText(part.text)}</MessageResponse>
         </MessageContent>
+      );
+    }
+
+    if (type === "tool-webSearch") {
+      const { toolCallId, state } = part;
+      const query = part.input?.query;
+      let output: WebSearchOutput | undefined;
+      if (state === "output-available") {
+        ({ output } = part);
+      } else if (state === "output-error") {
+        output = {
+          error: part.errorText,
+          provider: "tavily",
+          query: query ?? "",
+          results: [],
+        };
+      }
+      return (
+        <div className="w-full" key={toolCallId}>
+          <WebSources output={output} query={query} />
+        </div>
       );
     }
 
