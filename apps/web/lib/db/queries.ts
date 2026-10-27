@@ -679,7 +679,7 @@ export async function saveComic({
         createdAt: new Date(),
         id,
         idea,
-        panelCount: panels.length,
+        panelCount: panels.filter((panel) => panel.imageKey).length,
         panels,
         style,
         title,

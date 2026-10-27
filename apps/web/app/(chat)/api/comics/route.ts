@@ -29,7 +29,7 @@ function toClient(request: Request, comic: Comic) {
     panels: comic.panels.map((panel) => ({
       caption: panel.caption,
       dialogue: panel.dialogue,
-      url: fileUrl(request, panel.imageKey),
+      url: panel.imageKey ? fileUrl(request, panel.imageKey) : null,
     })),
     style: comic.style,
     title: comic.title,
