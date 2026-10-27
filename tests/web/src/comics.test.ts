@@ -29,11 +29,14 @@ const script = {
   title: "Mayor Mo",
 };
 
-const run = vi.fn(async (model: string) =>
-  model === "@cf/black-forest-labs/flux-1-schnell"
+const IMAGE = "@cf/black-forest-labs/flux-1-schnell";
+const answer = async (model: string) =>
+  model === IMAGE
     ? { image: btoa("jpeg-bytes") }
-    : { response: `Here is your comic:\n\`\`\`json\n${JSON.stringify(script)}\n\`\`\`` }
-);
+    : { response: `Here is your comic:\n\`\`\`json\n${JSON.stringify(script)}\n\`\`\`` };
+const run = vi.fn(answer);
+// What FLUX's safety filter throws for a prompt it refuses.
+const refusal = () => new Error("8007: Input prompt contains NSFW content.");
 const put = vi.fn(async () => ({}));
 vi.mock("@opennextjs/cloudflare", () => ({
   getCloudflareContext: () => ({ env: { AI: { run }, BLOB: { put } } }),
@@ -55,6 +58,12 @@ describe("parseComicScript (lib/comics/script.ts)", () => {
     expect(parsed.panels).toHaveLength(4);
   });
 
+  it("forgives trailing commas, the commonest slip", async () => {
+    const { parseComicScript } = await import("@/lib/comics/script");
+    const parsed = parseComicScript('{"title":"T","cast":"c","panels":[{"scene":"s","caption":"","dialogue":"",},],}', 4);
+    expect(parsed.panels).toHaveLength(1);
+  });
+
   it("refuses a reply that is not a script", async () => {
     const { parseComicScript } = await import("@/lib/comics/script");
     expect(() => parseComicScript("I cannot do that", 4)).toThrow(/did not write a comic script/);
@@ -66,7 +75,8 @@ describe("POST /api/comics", () => {
   beforeEach(() => {
     vi.resetModules();
     auth.mockReset();
-    run.mockClear();
+    run.mockReset();
+    run.mockImplementation(answer);
     put.mockClear();
     saveComic.mockClear();
   });
@@ -108,5 +118,90 @@ describe("POST /api/comics", () => {
     }
     expect(put).toHaveBeenCalledTimes(4);
     expect(saveComic).toHaveBeenCalledWith(expect.objectContaining({ style: "superhero", userId: "u1" }));
+  });
+
+  it("asks a refused panel again with less, and keeps the comic", async () => {
+    auth.mockResolvedValue({ user: { id: "u1", type: "regular" } });
+    // The first wording of every panel is refused; the second, without the
+    // cast, is drawn.
+    run.mockImplementation(async (model: string, inputs?: { prompt?: string }) => {
+      if (model === IMAGE && inputs?.prompt?.includes("Characters:")) {
+        throw refusal();
+      }
+      return answer(model);
+    });
+    const { POST } = await import("@/app/(chat)/api/comics/route");
+    const res = await POST(post({ idea: "a woman who draws a hill", panels: 4, style: "manga" }));
+    expect(res.status).toBe(200);
+    const { comic } = await res.json();
+    expect(comic.panels.every((p: { url: string | null }) => p.url)).toBe(true);
+    expect(run.mock.calls.filter(([m]) => m === IMAGE)).toHaveLength(8);
+    for (const [m, inputs] of run.mock.calls as unknown as [string, { prompt?: string }][]) {
+      if (m === IMAGE) {
+        expect(inputs.prompt).toContain("fully clothed");
+      }
+    }
+  });
+
+  it("shows a panel the filter never draws as text alone, and counts only drawn images", async () => {
+    auth.mockResolvedValue({ user: { id: "u1", type: "regular" } });
+    run.mockImplementation(async (model: string, inputs?: { prompt?: string }) => {
+      if (model === IMAGE && inputs?.prompt?.includes("soapbox")) {
+        throw refusal();
+      }
+      return answer(model);
+    });
+    const { POST } = await import("@/app/(chat)/api/comics/route");
+    const res = await POST(post({ idea: "a cat becomes mayor", panels: 4, style: "cartoon" }));
+    expect(res.status).toBe(200);
+    const { comic } = await res.json();
+    expect(comic.panels[0]).toEqual({ caption: "Election day.", dialogue: "", url: null });
+    expect(comic.panels.slice(1).every((p: { url: string | null }) => p.url)).toBe(true);
+    const saved = saveComic.mock.calls[0]![0] as { panels: { imageKey: string }[] };
+    expect(saved.panels.filter((p) => p.imageKey)).toHaveLength(3);
+  });
+
+  it("fails plainly when the filter refuses every panel", async () => {
+    auth.mockResolvedValue({ user: { id: "u1", type: "regular" } });
+    run.mockImplementation(async (model: string) => {
+      if (model === IMAGE) {
+        throw refusal();
+      }
+      return answer(model);
+    });
+    const { POST } = await import("@/app/(chat)/api/comics/route");
+    const res = await POST(post({ idea: "a cat becomes mayor", panels: 4, style: "cartoon" }));
+    expect(res.status).toBe(502);
+    expect((await res.json()).error).toMatch(/safety filter refused every panel/);
+    expect(saveComic).not.toHaveBeenCalled();
+  });
+
+  it("does not retry an image error that is not a refusal", async () => {
+    auth.mockResolvedValue({ user: { id: "u1", type: "regular" } });
+    run.mockImplementation(async (model: string) => {
+      if (model === IMAGE) {
+        throw new Error("3040: Capacity temporarily exceeded");
+      }
+      return answer(model);
+    });
+    const { POST } = await import("@/app/(chat)/api/comics/route");
+    const res = await POST(post({ idea: "a cat becomes mayor", panels: 4, style: "cartoon" }));
+    expect(res.status).toBe(502);
+    expect(run.mock.calls.filter(([m]) => m === IMAGE)).toHaveLength(4);
+  });
+
+  it("writes the script again when the first one does not parse", async () => {
+    auth.mockResolvedValue({ user: { id: "u1", type: "regular" } });
+    let scripts = 0;
+    run.mockImplementation(async (model: string) => {
+      if (model !== IMAGE && scripts++ === 0) {
+        return { response: '{"title": "Broken", "panels": [ {"scene": ' };
+      }
+      return answer(model);
+    });
+    const { POST } = await import("@/app/(chat)/api/comics/route");
+    const res = await POST(post({ idea: "a cat becomes mayor", panels: 4, style: "cartoon" }));
+    expect(res.status).toBe(200);
+    expect((await res.json()).comic.title).toBe("Mayor Mo");
   });
 });

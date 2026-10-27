@@ -83,6 +83,24 @@ function ComicPanelView({
   panel: ClientComic["panels"][number];
   index: number;
 }) {
+  if (!panel.url) {
+    return (
+      <figure className="flex aspect-square flex-col items-center justify-center gap-2 rounded-md border-2 border-foreground bg-amber-50 p-4 text-center text-black">
+        {panel.caption ? (
+          <figcaption className="font-medium text-[11px] uppercase tracking-wide">
+            {panel.caption}
+          </figcaption>
+        ) : null}
+        {panel.dialogue ? (
+          <p className="font-semibold text-sm">{panel.dialogue}</p>
+        ) : null}
+        <p className="text-[10px] text-black/50">
+          The image model would not draw this panel.
+        </p>
+      </figure>
+    );
+  }
+
   return (
     <figure className="relative overflow-hidden rounded-md border-2 border-foreground bg-muted">
       {/* biome-ignore lint/performance/noImgElement: panels are served from R2 by this app, not optimised by next/image */}
@@ -119,7 +137,12 @@ function ComicView({ comic }: { comic: ClientComic }) {
       </header>
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
         {comic.panels.map((panel, index) => (
-          <ComicPanelView index={index} key={panel.url} panel={panel} />
+          <ComicPanelView
+            index={index}
+            // biome-ignore lint/suspicious/noArrayIndexKey: a comic's panels are fixed and ordered, and a text-only panel has no url
+            key={index}
+            panel={panel}
+          />
         ))}
       </div>
       <p className="text-muted-foreground text-xs">{comic.idea}</p>

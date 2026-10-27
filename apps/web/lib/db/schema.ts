@@ -141,8 +141,9 @@ export const stream = pgTable(
 export type Stream = InferSelectModel<typeof stream>;
 
 // A comic from the Comics tab (app/(chat)/comics): the story the model wrote
-// and one generated image per panel, kept in the R2 bucket under `imageKey`.
-// `panelCount` is the images it cost, which the monthly image allowance sums
+// and one generated image per panel, kept in the R2 bucket under `imageKey`
+// (empty when the image model's safety filter refused the panel).
+// `panelCount` is the images it drew, which the monthly image allowance sums
 // (lib/ai/entitlements.ts).
 export type ComicPanel = {
   caption: string;

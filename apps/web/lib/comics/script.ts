@@ -28,7 +28,8 @@ export function parseComicScript(text: string, panels: number): ComicScript {
   }
   let json: unknown;
   try {
-    json = JSON.parse(text.slice(start, end + 1));
+    // Trailing commas are the commonest slip, and JSON.parse refuses them.
+    json = JSON.parse(text.slice(start, end + 1).replace(/,\s*([}\]])/g, "$1"));
   } catch (error) {
     throw new Error("The model's comic script was not valid JSON", {
       cause: error,
