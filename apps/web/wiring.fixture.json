@@ -1,0 +1,23 @@
+{
+  "cloudflare-hyperdrive/dev": {
+    "hyperdrive_id": "00000000000000000000000000000002",
+    "hyperdrive_name": "dev-ai-chatbot-6-dev"
+  },
+  "cloudflare-hyperdrive/stage": {
+    "hyperdrive_id": "00000000000000000000000000000001",
+    "hyperdrive_name": "stg-ai-chatbot-6-stage"
+  },
+  "cloudflare-hyperdrive/prod": {
+    "hyperdrive_id": "00000000000000000000000000000003",
+    "hyperdrive_name": "prod-ai-chatbot-6-prod"
+  },
+  "cloudflare-r2/dev": {
+    "r2_bucket_name": "dev-ai-chatbot-6-dev"
+  },
+  "cloudflare-r2/stage": {
+    "r2_bucket_name": "stg-ai-chatbot-6-stage"
+  },
+  "cloudflare-r2/prod": {
+    "r2_bucket_name": "prod-ai-chatbot-6-prod"
+  }
+}

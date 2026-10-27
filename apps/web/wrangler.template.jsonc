@@ -1,0 +1,58 @@
+// The source of wrangler.jsonc, which tooling/wire renders from it: from
+// wiring.fixture.json for local work (`pnpm run wire:fixture`, committed as
+// that render, because the deploy lane checks the config exists before it
+// builds), and on every Orun lane from the wiring documents the
+// `cloudflare-hyperdrive` and `cloudflare-r2` Terraform roots lease-publish
+// (WIRING_CLOUDFLARE_HYPERDRIVE_<ENV>, WIRING_CLOUDFLARE_R2_<ENV>) — dev, which
+// no root applies to, from the fixture (component.yaml's buildCommand). Edit
+// this file, never wrangler.jsonc. The workers-assets composition deploys one
+// environment per job with no wrangler `--env`, so `__ENV__` names the
+// environment this is rendered for.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "ai-chatbot-6-web",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2026-10-01",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  "observability": { "enabled": true },
+  // The Supabase project's Postgres, fronted by Hyperdrive. lib/db/queries.ts
+  // builds its `postgres` client per call from env.HYPERDRIVE.connectionString
+  // (upstream read POSTGRES_URL at module scope). Locally — `wrangler dev`,
+  // `next dev` — the binding points at a Postgres on localhost (README →
+  // Running it locally); `pnpm --filter @app/web db:migrate` applies the
+  // schema to it.
+  "hyperdrive": [
+    {
+      "binding": "HYPERDRIVE",
+      "id": "@@wiring(cloudflare-hyperdrive/__ENV__:hyperdrive_id)@@",
+      "localConnectionString": "postgres://postgres:postgres@localhost:5432/postgres"
+    }
+  ],
+  // Chat attachments. Vercel Blob's `put()` becomes a put into this bucket
+  // (app/(chat)/api/files/upload/route.ts) and the Worker serves the objects
+  // back at /api/files/<key> (app/(chat)/api/files/[...key]/route.ts).
+  "r2_buckets": [
+    {
+      "binding": "BLOB",
+      "bucket_name": "@@wiring(cloudflare-r2/__ENV__:r2_bucket_name)@@"
+    }
+  ],
+  // The model provider. Workers AI through this binding is the default for
+  // the chat, the titles and the artifact tools (lib/ai/providers.ts): it
+  // needs no key — the Worker's own account runs the models. Workers AI has
+  // no local mode, so `wrangler dev` and `next dev` reach it remotely
+  // (`wrangler login` first).
+  "ai": {
+    "binding": "AI"
+  }
+  // AUTH_SECRET and AI_GATEWAY_API_KEY are optional Worker secrets, never
+  // vars (`wrangler secret put`, README). Without AUTH_SECRET the session key
+  // is the one the database generated (lib/auth-secret.ts); without the
+  // gateway key only the Workers AI models are offered. REDIS_URL is absent
+  // too: without it the chat skips resumable streams and the Redis IP rate
+  // limit, as upstream does, and the per-user hourly limit still applies.
+}

@@ -1,0 +1,21 @@
+{
+  "extends": "../../tooling/tsconfig/web.json",
+  "compilerOptions": {
+    "composite": false,
+    "declaration": false,
+    "declarationMap": false,
+    "noEmit": true,
+    "jsx": "react-jsx",
+    "types": ["node"],
+    // The tests import the app's route handlers and so typecheck the
+    // template's own files; the template is written against Next's default
+    // strictness (apps/web/tsconfig.json), not the stricter base here.
+    "allowJs": true,
+    "noImplicitReturns": false,
+    "noUncheckedIndexedAccess": false,
+    "paths": {
+      "@/*": ["../../apps/web/*"]
+    }
+  },
+  "include": ["src/**/*.ts", "src/**/*.tsx", "../../apps/web/cloudflare-env.d.ts"]
+}

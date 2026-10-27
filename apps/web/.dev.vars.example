@@ -1,0 +1,23 @@
+# Local Worker secrets for `wrangler dev` / `opennextjs-cloudflare preview`.
+# Copy to .dev.vars (git-ignored); never commit a value. EVERY KEY IS
+# OPTIONAL: the Worker runs with this file absent.
+#
+# In stage/prod these are Worker secrets, not wrangler vars: set one with
+# `wrangler secret put <NAME> --name ai-chatbot-6-web-<env>` (README); the
+# deploy lane does not set them. The database is not here: the Worker reaches
+# it through the HYPERDRIVE binding (wrangler.jsonc); attachments go to the
+# BLOB bucket binding, and the models to the AI binding (Workers AI — remote
+# even under `wrangler dev`, so `wrangler login` first).
+
+# The session key. Unset, it is the one the database generated
+# (migration 020_app_secrets; lib/auth-secret.ts).
+# AUTH_SECRET=
+
+# The Vercel AI Gateway: adds upstream's gateway models to the picker.
+# AI_GATEWAY_API_KEY=
+
+# Redis: resumable streams and the per-IP rate limit.
+# REDIS_URL=
+
+# Optional. Cloudflare Web Analytics token; build-time (NEXT_PUBLIC_) so it
+# belongs in .env.local for `next build`, not here.
