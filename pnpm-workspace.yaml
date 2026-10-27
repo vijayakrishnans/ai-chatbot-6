@@ -1,0 +1,19 @@
+packages:
+  - "apps/*"
+  - "packages/*"
+  - "tests/*"
+  - "tooling/*"
+
+# pnpm 10 blocks dependency build scripts unless allow-listed; wrangler's
+# workerd and esbuild need theirs to verify their platform binaries.
+onlyBuiltDependencies:
+  - esbuild
+  - workerd
+  - sharp
+
+# tests/db runs the migrations in PGlite (Postgres compiled to WASM), and
+# drizzle-orm lists PGlite as an optional peer. One version for both, pinned:
+# the app never imports it, and an optional peer must not float to whatever
+# was published yesterday.
+overrides:
+  "@electric-sql/pglite": "0.5.8"

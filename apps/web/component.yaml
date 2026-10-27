@@ -1,0 +1,130 @@
+apiVersion: sourceplane.io/v1
+kind: Component
+metadata:
+  name: web
+  description: Vercel's Next.js AI Chatbot (Next.js on Cloudflare Workers + Static Assets via @opennextjs/cloudflare, per environment)
+spec:
+  type: cloudflare-workers-assets-turbo
+  lifecycle: production
+  owner: platform
+  # Its pages, attached to it in the workspace's catalog: what the Docs
+  # library shows for it, and what the catalog's docs and runbook checks read.
+  # Generated from what this manifest and its sources declare.
+  docs:
+    overview: docs/overview.md
+    pages:
+      - { path: docs/architecture.md, role: architecture, title: Architecture }
+      - { path: docs/runbook.md, role: runbook, title: Runbook }
+  # `app`, not `web`: a domain and a component share one name space in the
+  # catalog, and a domain called `web` hid this component from it.
+  domain: app
+  path: apps/web
+  # Its own lane per environment: the Next.js build is the longest job in the
+  # plan, and a shared lane would wait on it.
+  lane: isolated
+  # INFRA BEFORE APP, ENFORCED ON MAIN. A merge to main converges the whole
+  # product in one run: the Supabase project, then the Hyperdrive config over
+  # its database, then the migrations, then this Worker — with the R2 bucket
+  # applied beside them. Its deploy reads the Hyperdrive id and the bucket
+  # name (WIRING_CLOUDFLARE_HYPERDRIVE_<ENV>, WIRING_CLOUDFLARE_R2_<ENV>,
+  # rendered into the HYPERDRIVE and BLOB bindings) and needs the schema
+  # applied, and a job resolves its secrets when it STARTS — so it waits on
+  # all three, `mode: enforced`, and what the applies lease-published is
+  # there. A pull request deploys nothing, so nothing on one waits: every
+  # edge is advisory there.
+  dependsOn:
+    - component: cloudflare-hyperdrive
+      mode: enforced
+      modeRules:
+        - mode: advisory
+          when:
+            triggerRef: github-pull-request
+    - component: cloudflare-r2
+      mode: enforced
+      modeRules:
+        - mode: advisory
+          when:
+            triggerRef: github-pull-request
+    - component: db-migrate
+      mode: enforced
+      modeRules:
+        - mode: advisory
+          when:
+            triggerRef: github-pull-request
+  # The wiring documents the cloudflare-hyperdrive and cloudflare-r2 roots
+  # lease-publish, one per deployed environment; tooling/wire/live.mjs picks
+  # this job's. No model key and no session secret: the model is the AI
+  # binding, and the session key is one the database generated unless an
+  # owner sets AUTH_SECRET as a Worker secret (README).
+  secretEnv:
+    WIRING_CLOUDFLARE_HYPERDRIVE_STAGE: "secret://org_f86517d0aba846828ac4bfb46ef07a6d/ai-chatbot-6/stage/WIRING_CLOUDFLARE_HYPERDRIVE"
+    WIRING_CLOUDFLARE_HYPERDRIVE_PROD: "secret://org_f86517d0aba846828ac4bfb46ef07a6d/ai-chatbot-6/prod/WIRING_CLOUDFLARE_HYPERDRIVE"
+    WIRING_CLOUDFLARE_R2_STAGE: "secret://org_f86517d0aba846828ac4bfb46ef07a6d/ai-chatbot-6/stage/WIRING_CLOUDFLARE_R2"
+    WIRING_CLOUDFLARE_R2_PROD: "secret://org_f86517d0aba846828ac4bfb46ef07a6d/ai-chatbot-6/prod/WIRING_CLOUDFLARE_R2"
+  subscribe:
+    environments:
+      - name: dev
+        profile: verify
+      - name: stage
+        profile: verify
+        profileRules:
+          - profile: deploy
+            when:
+              triggerRef: github-push-main
+      - name: prod
+        profile: verify
+        profileRules:
+          - profile: deploy
+            when:
+              triggerRef: github-push-main
+  parameters:
+    nodeVersion: "22"
+    pnpmVersion: "10.12.1"
+
+    workspaceDir: ../..
+    appDir: .
+
+    turboFilter: "@app/web"
+    wranglerConfig: wrangler.jsonc
+
+    # @opennextjs/cloudflare emits a Worker entrypoint plus a static-assets
+    # directory bound via ASSETS — both deploy in one `wrangler deploy`.
+    workerEntrypoint: .open-next/worker.js
+    assetsDir: .open-next/assets
+
+    # Per-env worker name: ai-chatbot-6-web-{dev,stage,prod}.
+    workerName: ai-chatbot-6-web
+    environmentAwareWorkerName: true
+
+    # The account's workers.dev subdomain; exported to the smoke step as
+    # ${WORKERS_DEV_SUBDOMAIN} and used to build ${DEPLOYED_URL}.
+    workersDevSubdomain: vijayakrishnan12994
+
+    installCommand: pnpm install --frozen-lockfile
+    # wrangler.jsonc is COMMITTED — the fixture render, so the composition's
+    # structure check (`test -f wrangler.jsonc`, before the build, in a fresh
+    # checkout) passes. Every lane re-renders it here, in its own job tree:
+    # stage and prod from this environment's wiring documents (and refuse to
+    # build without them), so the Worker binds the real Hyperdrive config and
+    # bucket; dev, which no root applies to, from the fixture.
+    #
+    # The product's public origin (the Open Graph images are absolute links,
+    # app/layout.tsx's metadataBase): the environment's SITE_URL when
+    # intent.yaml sets one (a custom domain), else its workers.dev URL. The
+    # subdomain is written out rather than read from ${WORKERS_DEV_SUBDOMAIN}:
+    # the composition exports that to the smoke step only, so the build would
+    # see it empty. ${ORUN_ENVIRONMENT} the runner sets for every step.
+    buildCommand: node ../../tooling/wire/live.mjs --template wrangler.template.jsonc --out wrangler.jsonc --components cloudflare-hyperdrive,cloudflare-r2 --env "${ORUN_ENVIRONMENT}" --fixture wiring.fixture.json --fixture-envs dev && NEXT_PUBLIC_SITE_URL="${SITE_URL:-https://ai-chatbot-6-web-${ORUN_ENVIRONMENT}.vijayakrishnan12994.workers.dev}" pnpm exec turbo run build --filter=@app/web
+
+    # Smoke: the proxy answers `/ping` before auth or the database are
+    # involved — the Worker booted — and /api/health answers ok: the database
+    # behind the HYPERDRIVE binding reachable and migrated, the session key
+    # among it. Each response is buffered before grep so an early match
+    # cannot SIGPIPE curl.
+    smokeCommand: "pong=$(curl -sf \"${DEPLOYED_URL}/ping\") && echo \"${pong}\" | grep -qx pong && health=$(curl -sf \"${DEPLOYED_URL}/api/health\") && echo \"${health}\" | grep -q '\"ok\":true'"
+  labels:
+    team: platform
+    layer: delivery
+    surface: web
+    runtime: cloudflare
+# orun: redeploy 01-product as_012de61581e14ea49eb7
